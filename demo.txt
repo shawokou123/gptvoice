@@ -1,4 +1,0 @@
-If your response contains code, show with syntax highlight, for example:
-```js
-code
-```
