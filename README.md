@@ -1,6 +1,7 @@
 *Take chatGPT into command line and Output the responses of ChatGPT in the form of voice*
 
 
+![gptvoice image](https://github.com/shawokou123/gptvoice/blob/main/e488788effc60f707da358764.png)
 # Setup
 
 1. clone this repo
