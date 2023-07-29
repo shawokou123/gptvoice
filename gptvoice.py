@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import enum
 import json
 import inspect
@@ -15,6 +16,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
 from rich.table import Table
+from io import StringIO
 
 import cmd2
 from cmd2 import argparse_custom, with_argparser, Settable
@@ -70,13 +72,18 @@ class Config:    #它包含各种属性和方法，用于从JSON文件加载和�
 
 
 class GptCli(cmd2.Cmd):
-    prompt = "👽shawokou👽> "
 
     def play_audio(self, filename):
         try: # 此段程序 使用了本地计算机的tranlsate-shell并给他指定了mpv播放器
-            subprocess.run(["trans", "-4", "-player", "mpv --speed=1.5", "-e", "google", "-speak", filename])
+            temp_audio_file = "temp_gpt_reply.mp3" #注意如果想在终端，显示trans的翻译结构，这个语句需要删除
+            subprocess.run(["trans", "-4", "-player", "mpv --speed=1.5",  "-speak", filename,"-o", temp_audio_file])
+            #注意如果想在终端，显示trans的翻译结构，这个语句中的"-o", temp_audio_file 需要删除            
         except FileNotFoundError:
                 print("错误，trans未安装")
+            #生成的temp_gpt_reply.mp3，在程序结束后 删除之
+        finally: 
+                if os.path.exists(temp_audio_file):
+                     os.remove(temp_audio_file)      
 
     def __init__(self, config):
         super().__init__(
@@ -85,6 +92,7 @@ class GptCli(cmd2.Cmd):
             shortcuts={},
             persistent_history_file=os.path.expanduser("~/.gptcli_history"),
         )
+        self.prompt = "[bold green]👽shawokou👽> [/bold green]"
         self.aliases[".exit"] = ".quit"
         self.aliases[".shawokou123"] = ".sp"
         self.aliases[".config"] = ".set"
@@ -139,14 +147,11 @@ class GptCli(cmd2.Cmd):
         text_to_speak = ''.join(args.text) #这里的''非常重要，否则无法读取英文单词
         if not self.session:
             self.print("没有回应需要朗读")
-            return
-
+            return               
         with open("temp_gpt_reply.txt", "w", encoding="utf8") as f:
-            f.write(text_to_speak)
-
+           f.write(text_to_speak) #这里的定义的write，将每次gpt回复，都写到这个文件中
         self.play_audio("file://temp_gpt_reply.txt")
-            
-
+              
        
     speak_parser = argparse_custom.DEFAULT_ARGUMENT_PARSER()
     speak_parser.add_argument("text", nargs='+', help="text to be spoken")
@@ -207,6 +212,7 @@ class GptCli(cmd2.Cmd):
         else:
             self.session.append({"role": "assistant", "content": answer})
             self.do_speak(Namespace(text=answer))
+        
         if self.config.showtokens:
             self.console.log(f"Tokens used: {self.single_tokens_used}")
 
