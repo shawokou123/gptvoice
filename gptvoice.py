@@ -128,7 +128,37 @@ class GptCli(cmd2.Cmd):
 
         self.single_tokens_used = 0
         self.total_tokens_used  = 0
+    #退出程序的时候删除所有mp3文件
+    def do_quit(self, arg):
+        """
+        退出应用程序。在退出之前，删除当前目录中的所有 .mp3、cui_huifu.txt 和 temp_gpt_reply.txt 文件。
+        """
+        # 删除 .mp3 文件
+        mp3_files = [file for file in os.listdir() if file.endswith(".mp3")]
+        for mp3_file in mp3_files:
+            try:
+                os.remove(mp3_file)
+            except Exception as e:
+                print(f"删除 {mp3_file} 时出错：{e}")
 
+        # 删除 cui_huifu.txt 文件
+        if os.path.exists("cui_huifu.txt"):
+            try:
+                os.remove("cui_huifu.txt")
+            except Exception as e:
+                print(f"删除 cui_huifu.txt 时出错：{e}")
+
+        # 删除 temp_gpt_reply.txt 文件
+        if os.path.exists("temp_gpt_reply.txt"):
+            try:
+                os.remove("temp_gpt_reply.txt")
+            except Exception as e:
+                print(f"删除 temp_gpt_reply.txt 时出错：{e}")
+        self.print("👽一个小兵--再见👽")
+        self._should_quit = True
+        return True
+
+        
     def openai_set(self, param, old, new):
         # self.print(f"openai.{param} = {old} -> {new}")
         setattr(openai, param, new)
