@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
+#######################################
+#chatGPT-voice-output--20230801       #
+#将chatGP回复用语音输出By一个小兵         #
+#该版用Edge-tts+mpv播放器               #  
+#一个小兵 E-mail:shawokou123@gmail.com #
+######################################
 
 import os
-import sys
 import enum
 import json
 import inspect
@@ -16,24 +21,18 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
 from rich.table import Table
-from io import StringIO
 
 import cmd2
 from cmd2 import argparse_custom, with_argparser, Settable
-
-import argparse
-from argparse import Namespace
-from gtts import gTTS
 import subprocess
-import re
 import openai
 
-class ContextLevel(enum.Enum):   #定义了一个枚举类 ContextLevel，它有三个成员：NONE、REQUEST 和 FULL。后面会用这个枚举来设置聊天消息的上下文级别。
+class ContextLevel(enum.Enum):
     NONE = 0
     REQUEST = 1
     FULL =  2
 
-class Config:    #它包含各种属性和方法，用于从JSON文件加载和检索配置设置
+class Config:
     sep = Markdown("---")
     baseDir = os.path.dirname(os.path.realpath(__file__))
     default = os.path.join(baseDir, "config.json")
@@ -50,9 +49,9 @@ class Config:    #它包含各种属性和方法，用于从JSON文件加载和�
             self.cfg = json.load(f)
         c: dict = self.cfg
         print("************************************")
-        print("💎chatGPT-voice-output--20230727💎")
+        print("💎chatGPT-voice-output--20230801💎")
         print("💎将chatGP回复用语音输出By一个小兵💎")
-        print("💎该版用translate-shell+mpv播放器💎")
+        print("🚀🚀该版用Edge-tts+mpv播放器🚀🚀")
         print("************************************\n")
         self.api_key = c.get("api_key") or openai.api_key
         self.api_base = c.get("api_base") or openai.api_base
@@ -72,18 +71,7 @@ class Config:    #它包含各种属性和方法，用于从JSON文件加载和�
 
 
 class GptCli(cmd2.Cmd):
-
-    def play_audio(self, filename):
-        try: # 此段程序 使用了本地计算机的tranlsate-shell并给他指定了mpv播放器
-            temp_audio_file = "temp_gpt_reply.mp3" #注意如果想在终端，显示trans的翻译结构，这个语句需要删除
-            subprocess.run(["trans", "-4", "-player", "mpv --speed=1.5",  "-speak", filename,"-o", temp_audio_file])
-            #注意如果想在终端，显示trans的翻译结构，这个语句中的"-o", temp_audio_file 需要删除            
-        except FileNotFoundError:
-                print("错误，trans未安装")
-            #生成的temp_gpt_reply.mp3，在程序结束后 删除之
-        finally: 
-                if os.path.exists(temp_audio_file):
-                     os.remove(temp_audio_file)      
+    prompt = "gptcli> "
 
     def __init__(self, config):
         super().__init__(
@@ -94,7 +82,6 @@ class GptCli(cmd2.Cmd):
         )
         self.prompt = "[bold green]👽shawokou👽> [/bold green]"
         self.aliases[".exit"] = ".quit"
-        self.aliases[".shawokou123"] = ".sp"
         self.aliases[".config"] = ".set"
         self.doc_header = "gptcli commands (use '.help -v' for verbose/'.help <topic>' for details):"
         self.hidden_commands = [
@@ -113,7 +100,7 @@ class GptCli(cmd2.Cmd):
             val = getattr(self.config, opt)
             setattr(openai, opt, val)
             if opt == "api_key" and len(val) > 7:
-                val = val[:3] + "🚀" * 5
+                val = val[:1] + "🚀" * 7
             self.print(f"openai.{opt}={val}")
         if self.config.proxy:
             self.print("Proxy:", self.config.proxy)
@@ -141,25 +128,6 @@ class GptCli(cmd2.Cmd):
 
         self.single_tokens_used = 0
         self.total_tokens_used  = 0
-    
-
-    def do_speak(self, args: Namespace):
-        text_to_speak = ''.join(args.text) #这里的''非常重要，否则无法读取英文单词
-        if not self.session:
-            self.print("没有回应需要朗读")
-            return               
-        with open("temp_gpt_reply.txt", "w", encoding="utf8") as f:
-           f.write(text_to_speak) #这里的定义的write，将每次gpt回复，都写到这个文件中
-        self.play_audio("file://temp_gpt_reply.txt")
-              
-       
-    speak_parser = argparse_custom.DEFAULT_ARGUMENT_PARSER()
-    speak_parser.add_argument("text", nargs='+', help="text to be spoken")
-
-    @with_argparser(speak_parser)
-    def do_sp(self, args: Namespace):
-        """Speak the given text using gTTS"""
-        self.do_speak(args)
 
     def openai_set(self, param, old, new):
         # self.print(f"openai.{param} = {old} -> {new}")
@@ -211,10 +179,21 @@ class GptCli(cmd2.Cmd):
             self.session.pop()
         else:
             self.session.append({"role": "assistant", "content": answer})
-            self.do_speak(Namespace(text=answer))
-        
+
         if self.config.showtokens:
             self.console.log(f"Tokens used: {self.single_tokens_used}")
+        
+        # Save assistant's reply to cui_huifu.txt
+        with open("cui_huifu.txt", "a", encoding="utf-8") as f:
+            f.write(answer + "\n")
+        
+        try:
+            subprocess.run(["python3", "gptvoice-Edgtts.py"])
+        except FileNotFoundError:
+            self.print("Error: tts.py not found. Make sure the tts.py file is in the same directory.")
+
+        if os.path.exists("cui_huifu.txt"):
+           os.remove("cui_huifu.txt")
 
     @property
     def messages(self):
@@ -329,7 +308,7 @@ class GptCli(cmd2.Cmd):
         contents = []
         while True:
             try:
-                line = input("😊Input> ")
+                line = input("> ")
             except EOFError:
                 self.print("--- EOF ---")
                 break
